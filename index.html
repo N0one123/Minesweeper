@@ -79,6 +79,36 @@
       50% { transform: scale(1.3); }
       100% { transform: scale(1); }
     }
+    #winPopup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+
+    #winPopup .popup {
+      background: white;
+      padding: 30px 50px;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #2e7d32;
+      animation: zoomIn 0.4s ease;
+    }
+
+    @keyframes zoomIn {
+      0% { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
   </style>
 </head>
 <body>
@@ -86,6 +116,10 @@
     <button id="flagModeBtn">Toggle Flag Mode (Off)</button>
   </div>
   <div id="board"></div>
+  <div id="winPopup">
+    <div class="popup">🎉 You Win!</div>
+  </div>
+
   <script>
     const board = document.getElementById("board");
     const flagModeBtn = document.getElementById("flagModeBtn");
@@ -162,6 +196,7 @@
         } else {
           revealEmpty(id);
         }
+        checkWin();
       }
     }
 
@@ -228,6 +263,17 @@
         8: '#808080'
       };
       return colors[n] || '#000';
+    }
+
+    function checkWin() {
+     const revealedCount = cells.filter(c => c.classList.contains("revealed")).length;
+     const totalSafeCells = width * height - bombCount;
+      if (revealedCount === totalSafeCells) {
+      setTimeout(() => {
+         document.getElementById("winPopup").style.display = "flex";
+         revealAll(); // Optionally reveal all bombs on win
+      }, 100);
+     }
     }
 
     createBoard();
