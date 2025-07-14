@@ -153,7 +153,6 @@
       if (cell.dataset.type === "bomb") {
         cell.classList.add("bomb");
         cell.textContent = "💣";
-        alert("💥 Game Over!");
         revealAll();
       } else {
         const count = parseInt(cell.dataset.bombs);
