@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minesweeper</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      background: radial-gradient(circle, #d0e8ff, #ffffff);
+    }
+    #controls {
+      margin: 10px;
+    }
+    #flagModeBtn {
+      padding: 8px 16px;
+      font-size: 14px;
+      background-color: #2196f3;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    #flagModeBtn:hover {
+      background-color: #1976d2;
+    }
+    #board {
+      display: grid;
+      grid-template-columns: repeat(10, 32px);
+      grid-template-rows: repeat(10, 32px);
+      gap: 1px;
+      background-color: #666;
+      padding: 5px;
+      border: 3px solid #333;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .cell {
+      width: 32px;
+      height: 32px;
+      background-color: #c0c0c0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      border: 1px solid #999;
+      box-shadow: inset -1px -1px 2px #fff, inset 1px 1px 2px #666;
+      transition: all 0.2s ease;
+    }
+    .cell:hover {
+      transform: scale(1.05);
+    }
+    .cell.revealed {
+      background-color: #e0e0e0;
+      box-shadow: none;
+      border: 1px solid #aaa;
+      transform: scale(1);
+    }
+    .cell.bomb {
+      background-color: #f44336;
+      color: white;
+      animation: pop 0.2s ease-in-out;
+    }
+    .cell.flagged {
+      background-color: #fdd835;
+    }
+
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <button id="flagModeBtn">Toggle Flag Mode (Off)</button>
+  </div>
+  <div id="board"></div>
+  <script>
+    const board = document.getElementById("board");
+    const flagModeBtn = document.getElementById("flagModeBtn");
+    let flagMode = false;
+
+    const width = 10;
+    const height = 10;
+    const bombCount = 15;
+    const cells = [];
+
+    flagModeBtn.addEventListener("click", () => {
+      flagMode = !flagMode;
+      flagModeBtn.textContent = `Toggle Flag Mode (${flagMode ? 'On' : 'Off'})`;
+    });
+
+    function createBoard() {
+      const bombArray = Array(bombCount).fill("bomb");
+      const emptyArray = Array(width * height - bombCount).fill("empty");
+      const gameArray = emptyArray.concat(bombArray).sort(() => Math.random() - 0.5);
+
+      for (let i = 0; i < width * height; i++) {
+        const cell = document.createElement("div");
+        cell.setAttribute("data-id", i);
+        cell.classList.add("cell");
+        board.appendChild(cell);
+        cells.push(cell);
+
+        cell.dataset.type = gameArray[i];
+
+        cell.addEventListener("click", () => {
+          if (flagMode) {
+            toggleFlag(cell);
+          } else {
+            clickCell(cell);
+          }
+        });
+      }
+
+      for (let i = 0; i < cells.length; i++) {
+        const cell = cells[i];
+        if (cell.dataset.type === "empty") {
+          let total = 0;
+          const isLeftEdge = i % width === 0;
+          const isRightEdge = i % width === width - 1;
+
+          if (i > 0 && !isLeftEdge && cells[i - 1].dataset.type === "bomb") total++;
+          if (i > 9 && cells[i - width].dataset.type === "bomb") total++;
+          if (i > 10 && !isLeftEdge && cells[i - width - 1].dataset.type === "bomb") total++;
+          if (i > 11 && !isRightEdge && cells[i - width + 1].dataset.type === "bomb") total++;
+          if (i < 98 && !isRightEdge && cells[i + 1].dataset.type === "bomb") total++;
+          if (i < 90 && cells[i + width].dataset.type === "bomb") total++;
+          if (i < 88 && !isLeftEdge && cells[i + width - 1].dataset.type === "bomb") total++;
+          if (i < 89 && !isRightEdge && cells[i + width + 1].dataset.type === "bomb") total++;
+
+          cell.dataset.bombs = total;
+        }
+      }
+    }
+
+    function clickCell(cell) {
+      const id = parseInt(cell.getAttribute("data-id"));
+      if (cell.classList.contains("revealed") || cell.classList.contains("flagged")) return;
+      cell.classList.add("revealed");
+
+      if (cell.dataset.type === "bomb") {
+        cell.classList.add("bomb");
+        cell.textContent = "💣";
+        alert("💥 Game Over!");
+        revealAll();
+      } else {
+        const count = parseInt(cell.dataset.bombs);
+        if (count > 0) {
+          cell.textContent = count;
+          cell.style.color = getColorForNumber(count);
+        } else {
+          revealEmpty(id);
+        }
+      }
+    }
+
+    function revealEmpty(id) {
+      const isLeftEdge = id % width === 0;
+      const isRightEdge = id % width === width - 1;
+
+      const directions = [
+        -1, 1, -width, width, -width - 1, -width + 1, width - 1, width + 1
+      ];
+
+      directions.forEach(offset => {
+        const newId = id + offset;
+        const isValid = newId >= 0 && newId < width * height;
+        if (!isValid) return;
+
+        const nearLeft = offset === -1 || offset === -width - 1 || offset === width - 1;
+        const nearRight = offset === 1 || offset === -width + 1 || offset === width + 1;
+
+        if ((nearLeft && isLeftEdge) || (nearRight && isRightEdge)) return;
+
+        const neighbor = cells[newId];
+        if (!neighbor.classList.contains("revealed") && neighbor.dataset.type === "empty") {
+          neighbor.classList.add("revealed");
+          const count = parseInt(neighbor.dataset.bombs);
+          if (count > 0) {
+            neighbor.textContent = count;
+            neighbor.style.color = getColorForNumber(count);
+          } else {
+            revealEmpty(newId);
+          }
+        }
+      });
+    }
+
+    function toggleFlag(cell) {
+      if (cell.classList.contains("revealed")) return;
+      cell.classList.toggle("flagged");
+      cell.textContent = cell.classList.contains("flagged") ? "🚩" : "";
+    }
+
+    function revealAll() {
+      cells.forEach(cell => {
+        cell.classList.add("revealed");
+        if (cell.dataset.type === "bomb") {
+          cell.classList.add("bomb");
+          cell.textContent = "💣";
+        } else if (cell.dataset.bombs !== "0") {
+          cell.textContent = cell.dataset.bombs;
+          cell.style.color = getColorForNumber(cell.dataset.bombs);
+        }
+      });
+    }
+
+    function getColorForNumber(n) {
+      const colors = {
+        1: '#0000FF',
+        2: '#008200',
+        3: '#FF0000',
+        4: '#000084',
+        5: '#840000',
+        6: '#008284',
+        7: '#000000',
+        8: '#808080'
+      };
+      return colors[n] || '#000';
+    }
+
+    createBoard();
+  </script>
+</body>
+</html>
