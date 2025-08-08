@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Minesweeper</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Minesweeper Explosion</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -13,11 +13,14 @@
       height: 100vh;
       margin: 0;
       background: radial-gradient(circle, #d0e8ff, #ffffff);
+      overflow: hidden;
     }
+
     #controls {
       margin: 10px;
     }
-    #flagModeBtn {
+
+    #flagModeBtn, #restartBtn {
       padding: 8px 16px;
       font-size: 14px;
       background-color: #2196f3;
@@ -26,10 +29,13 @@
       border-radius: 4px;
       cursor: pointer;
       transition: background-color 0.3s;
+      margin: 0 5px;
     }
-    #flagModeBtn:hover {
+
+    #flagModeBtn:hover, #restartBtn:hover {
       background-color: #1976d2;
     }
+
     #board {
       display: grid;
       grid-template-columns: repeat(10, 32px);
@@ -41,7 +47,9 @@
       border-radius: 6px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
+
     .cell {
+      position: relative;
       width: 32px;
       height: 32px;
       background-color: #c0c0c0;
@@ -54,226 +62,356 @@
       user-select: none;
       border: 1px solid #999;
       box-shadow: inset -1px -1px 2px #fff, inset 1px 1px 2px #666;
-      transition: all 0.2s ease;
+      transition: background-color 0.3s, transform 0.2s, box-shadow 0.2s;
     }
+
     .cell:hover {
-      transform: scale(1.05);
+      transform: scale(1.08);
     }
+
     .cell.revealed {
       background-color: #e0e0e0;
       box-shadow: none;
       border: 1px solid #aaa;
       transform: scale(1);
+      animation: reveal 0.3s ease-in-out;
     }
+
     .cell.bomb {
       background-color: #f44336;
       color: white;
-      animation: pop 0.2s ease-in-out;
-    }
-    .cell.flagged {
-      background-color: #fdd835;
+      animation: explode 0.4s ease-in-out;
     }
 
-    @keyframes pop {
+    .cell.flagged {
+      background-color: #fdd835;
+      animation: flagBounce 0.3s ease;
+    }
+
+    @keyframes reveal {
+      0% { background-color: #c0c0c0; transform: scale(0.95); opacity: 0; }
+      100% { background-color: #e0e0e0; transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes explode {
+      0% { transform: scale(1); background-color: #f44336; }
+      50% { transform: scale(1.5); background-color: #ff5252; }
+      100% { transform: scale(1); background-color: #f44336; }
+    }
+
+    @keyframes flagBounce {
       0% { transform: scale(1); }
       50% { transform: scale(1.3); }
       100% { transform: scale(1); }
     }
-    #winPopup {
+
+    /* FULL SCREEN EXPLOSION */
+    #explosionEffect {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 9999;
       display: none;
       justify-content: center;
       align-items: center;
-      z-index: 999;
+      flex-direction: column;
     }
 
-    #winPopup .popup {
+    #explosionEffect .flash {
+      position: absolute;
+      width: 100%;
+      height: 100%;
       background: white;
-      padding: 30px 50px;
-      border-radius: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-      color: #2e7d32;
-      animation: zoomIn 0.4s ease;
+      opacity: 0;
+      animation: flashFull 0.3s ease;
     }
 
-    @keyframes zoomIn {
-      0% { transform: scale(0); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
+    #explosionEffect .explosion-graphic {
+      font-size: 10rem;
+      opacity: 0;
+      animation: boomPop 1.2s ease forwards;
+      transform: scale(0);
     }
+
+    @keyframes flashFull {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes boomPop {
+      0% { transform: scale(0); opacity: 0; }
+      40% { transform: scale(1.3); opacity: 1; }
+      70% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1); opacity: 0; }
+    }
+    /* WIN ANIMATION */
+#winEffect {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  pointer-events: none;
+  z-index: 9999;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+}
+
+#winEffect .win-flash {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: #fff;
+  opacity: 0;
+  animation: winFlash 0.4s ease;
+}
+
+#winEffect .win-graphic {
+  font-size: 4rem;
+  font-weight: bold;
+  color: #4caf50;
+  opacity: 0;
+  animation: winPop 1.5s ease forwards;
+  transform: scale(0);
+}
+
+@keyframes winFlash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes winPop {
+  0% { transform: scale(0); opacity: 0; }
+  40% { transform: scale(1.4); opacity: 1; }
+  70% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
 
   </style>
 </head>
 <body>
   <div id="controls">
-    <button id="flagModeBtn">Toggle Flag Mode (Off)</button>
+    <button id="flagModeBtn">🚩 Flag Mode</button>
+    <button id="restartBtn">🔁 Restart</button>
   </div>
   <div id="board"></div>
-  <div id="winPopup">
-    <div class="popup">🎉 You Win!</div>
+
+  <!-- Full screen explosion -->
+  <div id="explosionEffect">
+    <div class="flash"></div>
+    <div class="explosion-graphic">💥</div>
   </div>
+  <!-- Win animation -->
+   <div id="winEffect">
+     <div class="win-flash"></div>
+     <div class="win-graphic">🎉 You Win!</div>
+   </div>
 
   <script>
     const board = document.getElementById("board");
     const flagModeBtn = document.getElementById("flagModeBtn");
+    const restartBtn = document.getElementById("restartBtn");
     let flagMode = false;
+    const size = 10;
+    const mineCount = 10;
 
-    const width = 10;
-    const height = 10;
-    const bombCount = 15;
-    const cells = [];
-
-    flagModeBtn.addEventListener("click", () => {
+    flagModeBtn.onclick = () => {
       flagMode = !flagMode;
-      flagModeBtn.textContent = `Toggle Flag Mode (${flagMode ? 'On' : 'Off'})`;
-    });
+      flagModeBtn.style.backgroundColor = flagMode ? "#f44336" : "#2196f3";
+    };
+
+    restartBtn.onclick = () => {
+      board.innerHTML = "";
+      createBoard();
+    };
 
     function createBoard() {
-      const bombArray = Array(bombCount).fill("bomb");
-      const emptyArray = Array(width * height - bombCount).fill("empty");
-      const gameArray = emptyArray.concat(bombArray).sort(() => Math.random() - 0.5);
+      const cells = [];
+      let bombs = [];
 
-      for (let i = 0; i < width * height; i++) {
-        const cell = document.createElement("div");
-        cell.setAttribute("data-id", i);
-        cell.classList.add("cell");
-        board.appendChild(cell);
-        cells.push(cell);
-
-        cell.dataset.type = gameArray[i];
-
-        cell.addEventListener("click", () => {
-          if (flagMode) {
-            toggleFlag(cell);
-          } else {
-            clickCell(cell);
-          }
-        });
-      }
-
-      for (let i = 0; i < cells.length; i++) {
-        const cell = cells[i];
-        if (cell.dataset.type === "empty") {
-          let total = 0;
-          const isLeftEdge = i % width === 0;
-          const isRightEdge = i % width === width - 1;
-
-          if (i > 0 && !isLeftEdge && cells[i - 1].dataset.type === "bomb") total++;
-          if (i > 9 && cells[i - width].dataset.type === "bomb") total++;
-          if (i > 10 && !isLeftEdge && cells[i - width - 1].dataset.type === "bomb") total++;
-          if (i > 11 && !isRightEdge && cells[i - width + 1].dataset.type === "bomb") total++;
-          if (i < 98 && !isRightEdge && cells[i + 1].dataset.type === "bomb") total++;
-          if (i < 90 && cells[i + width].dataset.type === "bomb") total++;
-          if (i < 88 && !isLeftEdge && cells[i + width - 1].dataset.type === "bomb") total++;
-          if (i < 89 && !isRightEdge && cells[i + width + 1].dataset.type === "bomb") total++;
-
-          cell.dataset.bombs = total;
-        }
-      }
-    }
-
-    function clickCell(cell) {
-      const id = parseInt(cell.getAttribute("data-id"));
-      if (cell.classList.contains("revealed") || cell.classList.contains("flagged")) return;
-      cell.classList.add("revealed");
-
-      if (cell.dataset.type === "bomb") {
-        cell.classList.add("bomb");
-        cell.textContent = "💣";
-        revealAll();
-      } else {
-        const count = parseInt(cell.dataset.bombs);
-        if (count > 0) {
-          cell.textContent = count;
-          cell.style.color = getColorForNumber(count);
-        } else {
-          revealEmpty(id);
-        }
-        checkWin();
-      }
-    }
-
-    function revealEmpty(id) {
-      const isLeftEdge = id % width === 0;
-      const isRightEdge = id % width === width - 1;
-
-      const directions = [
-        -1, 1, -width, width, -width - 1, -width + 1, width - 1, width + 1
+      // Prevent bombs from spawning in corners
+      const cornerIndices = [
+        0, size - 1, size * (size - 1), size * size - 1
       ];
 
-      directions.forEach(offset => {
-        const newId = id + offset;
-        const isValid = newId >= 0 && newId < width * height;
-        if (!isValid) return;
+      while (bombs.length < mineCount) {
+        let i = Math.floor(Math.random() * size * size);
+        if (!bombs.includes(i) && !cornerIndices.includes(i)) {
+          bombs.push(i);
+        }
+      }
 
-        const nearLeft = offset === -1 || offset === -width - 1 || offset === width - 1;
-        const nearRight = offset === 1 || offset === -width + 1 || offset === width + 1;
+      for (let i = 0; i < size * size; i++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+        cell.dataset.index = i;
+        cell.dataset.bomb = bombs.includes(i);
+        board.appendChild(cell);
+        cells.push(cell);
+        cell.addEventListener("click", () => clickCell(cell));
+        cell.oncontextmenu = e => {
+          e.preventDefault();
+          toggleFlag(cell);
+        };
+      }
 
-        if ((nearLeft && isLeftEdge) || (nearRight && isRightEdge)) return;
-
-        const neighbor = cells[newId];
-        if (!neighbor.classList.contains("revealed") && neighbor.dataset.type === "empty") {
-          neighbor.classList.add("revealed");
-          const count = parseInt(neighbor.dataset.bombs);
-          if (count > 0) {
-            neighbor.textContent = count;
-            neighbor.style.color = getColorForNumber(count);
-          } else {
-            revealEmpty(newId);
+      for (let i = 0; i < size * size; i++) {
+        if (cells[i].dataset.bomb === "true") continue;
+        let count = 0;
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const x = i % size + dx;
+            const y = Math.floor(i / size) + dy;
+            if (x >= 0 && x < size && y >= 0 && y < size) {
+              const neighbor = cells[y * size + x];
+              if (neighbor.dataset.bomb === "true") count++;
+            }
           }
         }
-      });
+        cells[i].dataset.count = count;
+      }
     }
 
-    function toggleFlag(cell) {
-      if (cell.classList.contains("revealed")) return;
-      cell.classList.toggle("flagged");
-      cell.textContent = cell.classList.contains("flagged") ? "🚩" : "";
-    }
+function clickCell(cell) {
+  if (flagMode) {
+    toggleFlag(cell);
+    return;
+  }
 
-    function revealAll() {
-      cells.forEach(cell => {
-        cell.classList.add("revealed");
-        if (cell.dataset.type === "bomb") {
-          cell.classList.add("bomb");
+  if (cell.classList.contains("revealed") || cell.classList.contains("flagged")) return;
+
+  if (cell.dataset.bomb === "true") {
+    cell.classList.add("bomb", "revealed");
+    triggerBigExplosion();
+    revealAllBombs();
+    return;
+  }
+
+  reveal(cell);
+  checkWin();
+}
+
+
+function reveal(cell) {
+  if (!cell || cell.classList.contains("revealed") || cell.classList.contains("flagged")) return;
+  cell.classList.add("revealed");
+  const count = parseInt(cell.dataset.count);
+  if (count > 0) {
+    cell.textContent = count;
+    cell.style.color = getColorForNumber(count);
+  } else {
+    const i = parseInt(cell.dataset.index);
+    const x = i % size;
+    const y = Math.floor(i / size);
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && nx < size && ny >= 0 && ny < size) {
+          const neighbor = board.children[ny * size + nx];
+          reveal(neighbor);
+        }
+      }
+    }
+  }
+}
+function getColorForNumber(number) {
+  const colors = {
+    1: "#0000FF", // Blue
+    2: "#008000", // Green
+    3: "#FF0000", // Red
+    4: "#000080", // Dark Blue
+    5: "#800000", // Maroon
+    6: "#008080", // Teal
+    7: "#000000", // Black
+    8: "#808080"  // Gray
+  };
+  return colors[number] || "#000";
+}
+
+
+function toggleFlag(cell) {
+  if (cell.classList.contains("revealed")) return;
+  if (cell.classList.contains("flagged")) {
+    cell.classList.remove("flagged");
+    cell.textContent = "";
+  } else {
+    cell.classList.add("flagged");
+    cell.textContent = "🚩";
+  }
+}
+
+    function revealAllBombs() {
+      [...board.children].forEach(cell => {
+        if (cell.dataset.bomb === "true") {
+          cell.classList.add("bomb", "revealed");
           cell.textContent = "💣";
-        } else if (cell.dataset.bombs !== "0") {
-          cell.textContent = cell.dataset.bombs;
-          cell.style.color = getColorForNumber(cell.dataset.bombs);
         }
       });
     }
 
-    function getColorForNumber(n) {
-      const colors = {
-        1: '#0000FF',
-        2: '#008200',
-        3: '#FF0000',
-        4: '#000084',
-        5: '#840000',
-        6: '#008284',
-        7: '#000000',
-        8: '#808080'
-      };
-      return colors[n] || '#000';
-    }
+function checkWin() {
+  const cells = [...board.children];
+  let correctlyFlagged = true;
 
-    function checkWin() {
-     const revealedCount = cells.filter(c => c.classList.contains("revealed")).length;
-     const totalSafeCells = width * height - bombCount;
-      if (revealedCount === totalSafeCells) {
+  for (const cell of cells) {
+    const isBomb = cell.dataset.bomb === "true";
+    const isFlagged = cell.classList.contains("flagged");
+
+    if ((isBomb && !isFlagged) || (!isBomb && isFlagged)) {
+      correctlyFlagged = false;
+      break;
+    }
+  }
+
+  const totalRevealed = cells.filter(c => c.classList.contains("revealed")).length;
+  const totalNonBombs = cells.filter(c => c.dataset.bomb === "false").length;
+
+if (correctlyFlagged && cells.every(cell => {
+  return cell.dataset.bomb === "true" || cell.classList.contains("revealed");
+})) {
+  triggerWinAnimation();
+  }
+}
+
+function triggerWinAnimation() {
+  const win = document.getElementById("winEffect");
+  win.style.display = "flex";
+
+  const flash = win.querySelector('.win-flash');
+  const graphic = win.querySelector('.win-graphic');
+
+  // Reset animations
+  flash.style.animation = 'none';
+  graphic.style.animation = 'none';
+  void flash.offsetWidth;
+  void graphic.offsetWidth;
+
+  // Trigger animations
+  flash.style.animation = 'winFlash 0.4s ease';
+  graphic.style.animation = 'winPop 1.5s ease';
+
+  setTimeout(() => {
+    win.style.display = "none";
+  }, 1800);
+}
+
+    function triggerBigExplosion() {
+      const explosion = document.getElementById("explosionEffect");
+      explosion.style.display = "flex";
+      const flash = explosion.querySelector('.flash');
+      const boom = explosion.querySelector('.explosion-graphic');
+      flash.style.animation = 'none';
+      boom.style.animation = 'none';
+      void flash.offsetWidth;
+      void boom.offsetWidth;
+      flash.style.animation = 'flashFull 0.3s ease';
+      boom.style.animation = 'boomPop 1.2s ease';
       setTimeout(() => {
-         document.getElementById("winPopup").style.display = "flex";
-         revealAll(); // Optionally reveal all bombs on win
-      }, 100);
-     }
+        explosion.style.display = "none";
+      }, 1500);
     }
 
     createBoard();
